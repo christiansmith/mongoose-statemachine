@@ -41,6 +41,7 @@ statemachine = (schema, options) ->
     exit = states[transition.from].exit
     return ->
       return false if transition.guard?.apply(@)?
+      # these should be schema.post 'save' ? 
       enter.apply(@) if typeof enter is 'function'
       exit.apply(@) if typeof exit is 'function'
       @state = transition.to if @state is transition.from
@@ -59,54 +60,3 @@ defaultState = (states) ->
   selected[0] or stateNames[0]
 
 module.exports = statemachine
-
-
-
-
-
-
-
-
-
-
-
-  # THERE'S SOME ADDITIONAL COMPLEXITY HERE, BECAUSE
-  # WE WANT TO WAIT FOR THE MONGODB RESPONSE BEFORE
-  # WE TAKE ENTER/EXIT ACTIONS. WE'LL NEED TO HOLD ONTO
-  # THE DETAILS OF THE TRANSITION SOMEWHERE, TEMPORARILY
-
-
-  # guard
-  #schema.pre 'save', (next) ->
-    # change state
-    # throw if transition is invalid
-  #  next()
-
-  # transition
-  #schema.post 'save', (next) ->
-    # onEnter()
-    # onExit()
-  #  next()
-
-#### USAGE EXAMPLE
-
-    #schema = new Schema {}
-    #schema.plugin statemachine,
-    #  states:
-    #    init:
-    #      active: true
-    #      onEnter: ->
-    #      onExit: ->
-    #    pending:
-    #      guard: ->
-    #    completed:
-    #      onEnter: ->
-    #  transitions:
-    #    pend:
-    #      from: 'init'
-    #      to: 'pending'
-    #      guard: ->
-    #    complete:
-    #      from: 'pending'
-    #      to: 'completed'
-    #      guard: ->
