@@ -20,12 +20,10 @@
 
 _ = require 'underscore'
 
-
 statemachine = (schema, options) ->
   {states, transitions} = options
-
-  stateNames = Object.keys states
-  transitionNames = Object.keys transitions
+  stateNames            = Object.keys states
+  transitionNames       = Object.keys transitions
 
   # add a state field to the schema
   schema.add state: { type: String, enum: stateNames, default: defaultState(states) }
@@ -36,20 +34,34 @@ statemachine = (schema, options) ->
 
   # transition method creation
   transitionize = (t) ->
+
+    # get the transition by name and destructure it
     transition = transitions[t]
-    enter = states[transition.to].enter
-    exit = states[transition.from].exit
-    return ->
-      return false if transition.guard?.apply(@)?
-      # these should be schema.post 'save' ? 
-      enter.apply(@) if typeof enter is 'function'
-      exit.apply(@) if typeof exit is 'function'
+    exit       = states[transition.from].exit
+    enter      = states[transition.to].enter
+
+    # return a transition method 
+    return (callback) ->
+      # is this right? maybe unless instead of if?
+      return callback(new Error 'guard failed') if transition.guard?.apply(@)?
+      
+      # change the state
       @state = transition.to if @state is transition.from
+
+      # save the document
+      @save (err) =>
+        return callback(err) if err
+
+        # call the state change handlers
+        enter.call(@) if enter isnt undefined
+        exit.call(@) if exit isnt undefined
+        return callback(null)
 
   # build the transition methods from provided transitions
   transitionMethods = {}
   transitionMethods[t] = transitionize(t) for t in transitionNames
   schema.method transitionMethods
+
 
 
 # check for an explicit default

@@ -1,42 +1,53 @@
-mongoose = require 'mongoose'
 statemachine = require '../lib/index'
-
+mongoose     = require 'mongoose'
+sinon        = require 'sinon'
 require 'should'
 
 describe 'state machine', ->
 
-  schema = null
-
-  beforeEach ->
-    schema = new mongoose.Schema enterVal: String, exitVal: String
-    schema.plugin statemachine,
-      states:
-        a:
-          enter: -> @enterVal = 'entered'
-        b: {}
-        c:
-          exit: -> @exitVal = 'exited'
-      transitions:
-        x: { from: 'a', to: 'b' }
-        y: { from: 'b', to: 'c', guard: -> return false }
-        z: { from: 'c', to: 'a' }
+  before (done) ->
+    mongoose.connect 'mongodb://192.168.33.10/statemachine-test'
+    done()
 
   describe 'schema', ->
 
     it 'should enumerate states', ->
+      schema = new mongoose.Schema
+      schema.plugin statemachine,
+        states:
+          a: {}
+          b: {}
+          c: {}
+        transitions:
+          x: { from: 'a', to: 'b' }
+          y: { from: 'b', to: 'c', guard: -> return false }
+          z: { from: 'c', to: 'a' }
+
       schema.paths.state.enumValues.should.eql ['a', 'b', 'c']
+
 
   describe 'model', ->
     
-    model = null
-    Model = null
+    model  = null
+    Model  = null
 
-    beforeEach ->
+    beforeEach (done) ->
+      schema = new mongoose.Schema
+      schema.plugin statemachine,
+        states:
+          a: {}
+          b: {}
+          c: {}
+        transitions:
+          x: { from: 'a', to: 'b' }
+          y: { from: 'b', to: 'c', guard: -> return false }
+          z: { from: 'c', to: 'a' }
       Model = mongoose.model 'Model', schema
       model = new Model
+      done()
 
     it 'should expose available states', ->
-      model._states.should.eql schema.paths.state.enumValues
+      model._states.should.eql ['a','b','c']
       
     it 'should have transition methods', ->
       model.x.should.be.a 'function'
@@ -47,32 +58,63 @@ describe 'state machine', ->
       model.state.should.eql 'a'
 
     it 'should look for a defined default state', ->
-      schema2 = new mongoose.Schema
-      schema2.plugin statemachine, {states: {a:{},b:{default:true}}, transitions: {}}
-      Model = mongoose.model 'Model2', schema2
+      DefaultState = new mongoose.Schema
+      DefaultState.plugin statemachine, {states: {a:{},b:{default:true}}, transitions: {}}
+      Model = mongoose.model 'DefaultState', DefaultState
       model = new Model
       model.state.should.eql 'b'
 
-    it 'should transition between states', ->
-      model.x()
-      model.state.should.eql 'b'
+    it 'should transition between states', (done) ->
+      model.x (err) ->
+        model.state.should.eql 'b'
+        done()
 
-    it 'should require transitions between states to be defined', ->
-      model.y()
-      model.state.should.eql 'a'
+    it 'should require transitions between states to be defined', (done) ->
+      model.y (err) ->
+        model.state.should.eql 'a'
+        done()
 
-    it 'should guard transitions', ->
+    it 'should guard transitions', (done) ->
       model = new Model state: 'b'
-      model.y()
-      model.state.should.eql 'b'
+      model.y (err) ->
+        model.state.should.eql 'b'
+        done()
 
-    it 'should handle enter events', ->
-      model = new Model state: 'b'
-      model.z()
-      model.enterVal.should.eql 'entered'
+    it 'should save the document during transition', (done) ->
+      model = new Model state: 'c'
+      model.z (err) ->
+        model.isNew.should.be.false
+        done()
 
-    it 'should handle exit events', ->
-      model = new Model state: 'b'
-      model.z()
-      model.exitVal.should.eql 'exited'
+  describe 'after transition', ->
+    model = null
+    Model = null
+    enter = null
+    exit  = null
 
+    before (done) ->
+      enter = sinon.spy()
+      exit = sinon.spy()
+
+      CallbackSchema = new mongoose.Schema
+      CallbackSchema.plugin statemachine,
+        states:
+          a: {exit}
+          b: {enter}
+        transitions:
+          f: { from: 'a', to: 'b' }
+
+      Model = mongoose.model 'CallbackSchema', CallbackSchema
+      done()
+
+    it 'should call enter', (done) ->
+      model = new Model
+      model.f (err) ->
+        enter.called.should.be.true
+        done()
+
+    it 'should call exit', (done) ->
+      model = new Model
+      model.f ->
+        exit.called.should.be.true
+        done()
