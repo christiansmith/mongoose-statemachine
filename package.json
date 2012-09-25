@@ -2,7 +2,8 @@
   "author": "Christian Smith <smith@anvil.io> (http://anvil.io)",
   "name": "mongoose-statemachine",
   "description": "State machine plugin for Mongoose ODM",
-  "version": "0.0.0",
+  "keywords": ["mongoose", "MongoDB"],
+  "version": "0.0.1",
   "main": "lib/index.coffee",
   "dependencies": {
     "mongoose": "~3.1.2",
