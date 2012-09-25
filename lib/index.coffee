@@ -39,11 +39,17 @@ statemachine = (schema, options) ->
     transition = transitions[t]
     exit       = states[transition.from].exit
     enter      = states[transition.to].enter
+    guard      = transition.guard
 
     # return a transition method 
     return (callback) ->
-      # is this right? maybe unless instead of if?
-      return callback(new Error 'guard failed') if transition.guard?.apply(@)?
+      switch typeof guard
+        when 'function'
+          return callback(new Error 'guard failed') if guard?.apply(@)?
+        when 'object'
+          # invalidate the document for each guard that returns a message
+          @invalidate k, v.apply(@) for k, v of guard when v.apply(@)?
+          return callback @_validationError if @_validationError?
       
       # change the state
       @state = transition.to if @state is transition.from
@@ -53,16 +59,14 @@ statemachine = (schema, options) ->
         return callback(err) if err
 
         # call the state change handlers
-        enter.call(@) if enter isnt undefined
-        exit.call(@) if exit isnt undefined
+        enter.call(@) if enter?
+        exit.call(@) if exit?
         return callback(null)
 
   # build the transition methods from provided transitions
   transitionMethods = {}
   transitionMethods[t] = transitionize(t) for t in transitionNames
   schema.method transitionMethods
-
-
 
 # check for an explicit default
 # otherwise use the first state

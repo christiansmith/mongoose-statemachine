@@ -5,6 +5,9 @@ require 'should'
 
 describe 'state machine', ->
 
+  model  = null
+  Model  = null
+
   before (done) ->
     mongoose.connect 'mongodb://192.168.33.10/statemachine-test'
     done()
@@ -25,12 +28,8 @@ describe 'state machine', ->
 
       schema.paths.state.enumValues.should.eql ['a', 'b', 'c']
 
-
   describe 'model', ->
     
-    model  = null
-    Model  = null
-
     beforeEach (done) ->
       schema = new mongoose.Schema
       schema.plugin statemachine,
@@ -86,9 +85,40 @@ describe 'state machine', ->
         model.isNew.should.be.false
         done()
 
+  describe 'guard', ->
+
+    before (done) ->
+      GuardSchema = new mongoose.Schema
+        attr1: String
+        attr2: String
+      GuardSchema.plugin statemachine,
+        states:
+          a: {}
+          b: {}
+        transitions:
+          f:
+            from: 'a'
+            to: 'b'
+            guard:
+              attr1: -> 'required' unless @attr1?
+
+      Model = mongoose.model 'GuardSchema', GuardSchema
+      done()
+
+    it 'should protect the state', (done) ->
+      model = new Model
+      model.f (err) ->
+        model.state.should.eql 'a'
+        done()
+
+    it 'should invalidate the document', (done) ->
+      model = new Model
+      model.f (err) ->
+        err.errors.attr1.type.should.eql 'required'
+        done()
+
+
   describe 'after transition', ->
-    model = null
-    Model = null
     enter = null
     exit  = null
 
