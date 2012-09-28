@@ -3,7 +3,7 @@
   "name": "mongoose-statemachine",
   "description": "State machine plugin for Mongoose ODM",
   "keywords": ["mongoose", "MongoDB"],
-  "version": "0.0.1",
+  "version": "0.0.2",
   "main": "lib/index.coffee",
   "dependencies": {
     "mongoose": "~3.1.2",
