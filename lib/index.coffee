@@ -39,8 +39,13 @@ statemachine = (schema, options) ->
     return (callback) ->
       # get the transition by name and destructure it
       transition = transitions[t]
-      from       = @state if transition.from.indexOf @state isnt -1
-      exit       = states[from].exit
+
+      if typeof transition.from is 'string'
+        from = transition.from
+      else if Array.isArray(transition.from)
+        from = @state unless transition.from.indexOf(@state) is -1
+
+      exit       = states[from].exit if from?
       enter      = states[transition.to].enter
       guard      = transition.guard
 
