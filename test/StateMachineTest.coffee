@@ -40,7 +40,7 @@ describe 'state machine', ->
         transitions:
           x: { from: 'a', to: 'b' }
           y: { from: 'b', to: 'c', guard: -> return false }
-          z: { from: 'c', to: 'a' }
+          z: { from: ['b','c'], to: 'a' }
       Model = mongoose.model 'Model', schema
       model = new Model
       done()
@@ -72,6 +72,13 @@ describe 'state machine', ->
       model.y (err) ->
         model.state.should.eql 'a'
         done()
+
+    it 'should accept an array of "from" states in the transition', (done) ->
+      model = new Model state: 'b'
+      model.z (err) ->
+        model.state.should.eql 'a'
+        done()
+      
 
     it 'should guard transitions', (done) ->
       model = new Model state: 'b'

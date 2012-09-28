@@ -35,14 +35,15 @@ statemachine = (schema, options) ->
   # transition method creation
   transitionize = (t) ->
 
-    # get the transition by name and destructure it
-    transition = transitions[t]
-    exit       = states[transition.from].exit
-    enter      = states[transition.to].enter
-    guard      = transition.guard
-
     # return a transition method 
     return (callback) ->
+      # get the transition by name and destructure it
+      transition = transitions[t]
+      from       = @state if transition.from.indexOf @state isnt -1
+      exit       = states[from].exit
+      enter      = states[transition.to].enter
+      guard      = transition.guard
+
       switch typeof guard
         when 'function'
           return callback(new Error 'guard failed') if guard?.apply(@)?
@@ -52,7 +53,7 @@ statemachine = (schema, options) ->
           return callback @_validationError if @_validationError?
       
       # change the state
-      @state = transition.to if @state is transition.from
+      @state = transition.to if @state is from
 
       # save the document
       @save (err) =>
